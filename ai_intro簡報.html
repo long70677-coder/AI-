@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="slides-format" content="viewport">
+    <title>從 RPA 到 AI Agent：開發者該怎麼理解下一代自動化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --color-bg: #0f0f0f; --color-bg-deep: #050505; --color-surface: #1a1a1a;
+            --color-text: #f5f5f5; --color-text-secondary: #c4c4c4; --color-text-muted: #7a7a7a;
+            --color-accent-1: #ff4d00; --color-accent-2: #ff9a3c; --color-accent-3: #ffe08a;
+            --color-glass-bg: rgba(255,255,255,0.05); --color-glass-border: rgba(255,255,255,0.09);
+            --color-vignette: rgba(0,0,0,0.55);
+            --font-display: 'Archivo Black', sans-serif; --font-body: 'DM Sans', sans-serif;
+        }
+    </style>
+    <style>
+        :root { --color-bg: #0f0f0f; --color-text: #f5f5f5; --glow-color-rgb: 255,77,0; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { background: var(--color-bg); margin: 0; }
+        body { font-family: 'DM Sans', sans-serif; color: var(--color-text); overflow: hidden; height: 100vh; width: 100vw; }
+        .deck { width: 100vw; height: 100vh; position: relative; }
+        .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--color-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transform: scale(0.95); transition: opacity 0.7s ease, transform 0.7s ease; pointer-events: none; overflow: hidden; }
+        .slide.active { opacity: 1; transform: scale(1); pointer-events: all; }
+        .slide > .content { position: relative; z-index: 2; width: 100%; max-width: 1100px; padding: clamp(1.5rem, 4vw, 4rem); }
+        .nav-controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; z-index: 100; background: var(--color-glass-bg); backdrop-filter: blur(10px); padding: 10px 24px; border-radius: 40px; border: 1px solid var(--color-glass-border); }
+        .nav-btn { width: 40px; height: 40px; border: none; background: var(--color-glass-bg); color: var(--color-accent-1); border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s; }
+        .nav-btn:hover { background: var(--color-glass-border); }
+        .slide-dots { display: flex; gap: 8px; }
+        .slide-dots .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-glass-border); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .slide-dots .dot.active { background: var(--color-accent-1); transform: scale(1.3); }
+        .slide-counter { font-size: 0.8rem; color: var(--color-text-muted); min-width: 40px; text-align: center; }
+        .reveal { opacity: 0; transform: translateY(20px); }
+        @keyframes float-slow { 0%{transform:translate(0,0) scale(1)} 25%{transform:translate(60px,-50px) scale(1.12)} 50%{transform:translate(-40px,40px) scale(0.9)} 75%{transform:translate(50px,20px) scale(1.08)} 100%{transform:translate(0,0) scale(1)} }
+        @keyframes float-drift { 0%{transform:translate(0,0) scale(1) rotate(0deg)} 33%{transform:translate(-50px,-60px) scale(1.15) rotate(3deg)} 66%{transform:translate(40px,30px) scale(0.88) rotate(-2deg)} 100%{transform:translate(0,0) scale(1) rotate(0deg)} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+        .gradient-mesh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); animation: float-slow 10s ease-in-out infinite; }
+        .blob:nth-child(2) { animation: float-drift 14s ease-in-out infinite; }
+        .blob:nth-child(3) { animation: float-slow 18s ease-in-out infinite reverse; }
+        .slide::before { content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); background-repeat:repeat; background-size:256px 256px; opacity:0.03; mix-blend-mode:overlay; }
+        .slide::after { content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse at center, transparent 50%, var(--color-vignette) 100%); }
+        @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:0.01ms !important; transition-duration:0.2s !important; } }
+    </style>
+</head>
+<body>
+<div class="mouse-spotlight" style="position:fixed;inset:0;z-index:99;pointer-events:none;"></div>
+<div class="deck">
+
+    <!-- SLIDE 1: TITLE -->
+    <div class="slide slide-1 active" data-slide="1">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:520px;height:520px;top:-120px;right:-100px;background:var(--color-accent-1);opacity:0.14;"></div>
+            <div class="blob" style="width:320px;height:320px;bottom:-100px;left:-60px;background:var(--color-accent-2);opacity:0.1;"></div>
+            <div class="blob" style="width:200px;height:200px;top:40%;left:20%;background:var(--color-accent-3);opacity:0.08;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content text-center">
+            <div style="font-size:90px;margin-bottom:16px;animation:float 3s ease-in-out infinite;" class="reveal">🤖</div>
+            <h1 style="font-family:'Archivo Black',sans-serif;font-size:clamp(2.2rem,5.5vw,4.2rem);background:linear-gradient(135deg,#ff4d00,#ff9a3c,#ffe08a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;line-height:1.1;margin-bottom:20px;" class="reveal">從 RPA 到 AI Agent</h1>
+            <p style="font-size:clamp(0.85rem,1.4vw,1.2rem);color:var(--color-text-muted);letter-spacing:5px;text-transform:uppercase;font-weight:300;" class="reveal">開發者該怎麼理解下一代自動化</p>
+            <div style="margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;" class="reveal">
+                <span style="background:rgba(255,77,0,0.15);border:1px solid rgba(255,77,0,0.3);border-radius:20px;padding:6px 16px;font-size:0.8rem;color:var(--color-accent-2);">#RPA</span>
+                <span style="background:rgba(255,77,0,0.15);border:1px solid rgba(255,77,0,0.3);border-radius:20px;padding:6px 16px;font-size:0.8rem;color:var(--color-accent-2);">#AI Agent</span>
+                <span style="background:rgba(255,77,0,0.15);border:1px solid rgba(255,77,0,0.3);border-radius:20px;padding:6px 16px;font-size:0.8rem;color:var(--color-accent-2);">#Coding Agent</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: AGENDA -->
+    <div class="slide slide-2" data-slide="2">
+        <div class="gradient-mesh"><div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:var(--color-accent-1);opacity:0.08;"></div><div class="blob" style="width:220px;height:220px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.06;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">TODAY'S AGENDA</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.8rem,3.5vw,2.8rem);margin-bottom:36px;" class="reveal">今天講什麼</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid var(--color-accent-1);border-radius:12px;padding:20px;" class="reveal"><div style="font-size:1.6rem;margin-bottom:8px;">📈</div><div style="font-weight:700;margin-bottom:6px;font-size:1rem;">Part 1</div><div style="color:var(--color-accent-2);font-size:1.05rem;font-weight:600;margin-bottom:4px;">自動化演進史</div><div style="color:var(--color-text-muted);font-size:0.85rem;">RPA → Chat → AI Agent，這條線怎麼走到今天的</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid var(--color-accent-2);border-radius:12px;padding:20px;" class="reveal"><div style="font-size:1.6rem;margin-bottom:8px;">🧠</div><div style="font-weight:700;margin-bottom:6px;font-size:1rem;">Part 2</div><div style="color:var(--color-accent-2);font-size:1.05rem;font-weight:600;margin-bottom:4px;">什麼是 AI Agent</div><div style="color:var(--color-text-muted);font-size:0.85rem;">定義、核心元件、跟 Chatbot 到底差在哪</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid var(--color-accent-3);border-radius:12px;padding:20px;" class="reveal"><div style="font-size:1.6rem;margin-bottom:8px;">💻</div><div style="font-weight:700;margin-bottom:6px;font-size:1rem;">Part 3</div><div style="color:var(--color-accent-2);font-size:1.05rem;font-weight:600;margin-bottom:4px;">什麼是 AI Coding Agent</div><div style="color:var(--color-text-muted);font-size:0.85rem;">Claude Code、Codex 為什麼算 Agent</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid var(--color-accent-1);border-radius:12px;padding:20px;" class="reveal"><div style="font-size:1.6rem;margin-bottom:8px;">🗂️</div><div style="font-weight:700;margin-bottom:6px;font-size:1rem;">Part 4</div><div style="color:var(--color-accent-2);font-size:1.05rem;font-weight:600;margin-bottom:4px;">Claude Code 深入認識</div><div style="color:var(--color-text-muted);font-size:0.85rem;">設定/記憶怎麼讀、多人協作怎麼不打架</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;" class="reveal"><div style="font-size:1.6rem;margin-bottom:8px;">⚠️</div><div style="font-weight:700;margin-bottom:6px;font-size:1rem;">Part 5</div><div style="color:var(--color-accent-2);font-size:1.05rem;font-weight:600;margin-bottom:4px;">風險與導入原則</div><div style="color:var(--color-text-muted);font-size:0.85rem;">現在能用在哪，有什麼需要注意</div></div>
+                <div style="background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.35);border-radius:12px;padding:20px;" class="reveal"><div style="font-size:1.6rem;margin-bottom:8px;">🎬</div><div style="font-weight:700;margin-bottom:6px;font-size:1rem;color:var(--color-accent-2);">案例分享 + Live Demo</div><div style="color:var(--color-accent-2);font-size:1.05rem;font-weight:600;margin-bottom:4px;">台股下單系統實作</div><div style="color:var(--color-text-muted);font-size:0.85rem;">用真實案例示範一次 Plan → Build</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: WARM UP (2 questions, no hint) -->
+    <div class="slide slide-3" data-slide="3">
+        <div class="gradient-mesh"><div class="blob" style="width:450px;height:450px;top:-80px;left:-80px;background:var(--color-accent-1);opacity:0.12;"></div><div class="blob" style="width:300px;height:300px;bottom:-60px;right:-40px;background:var(--color-accent-2);opacity:0.09;"></div></div>
+        <canvas class="particle-canvas-ambient" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content text-center">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:20px;" class="reveal">WARM UP</p>
+            <!-- Q1 -->
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.5rem,3.2vw,2.4rem);line-height:1.25;margin-bottom:20px;" class="reveal">GitHub Copilot 幫你補完程式碼<br><span style="background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">算不算 AI Agent？</span></h2>
+            <div style="display:flex;gap:20px;justify-content:center;margin-bottom:28px;" class="reveal">
+                <div style="background:rgba(255,77,0,0.1);border:2px solid rgba(255,77,0,0.4);border-radius:14px;padding:16px 32px;font-size:1.1rem;font-weight:700;">✅ 算</div>
+                <div style="background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.15);border-radius:14px;padding:16px 32px;font-size:1.1rem;font-weight:700;">❌ 不算</div>
+            </div>
+            <!-- Q2 -->
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:22px 28px;max-width:560px;margin:0 auto;" class="reveal">
+                <p style="color:var(--color-text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;">第二題</p>
+                <p style="font-size:1.05rem;font-weight:700;margin-bottom:18px;line-height:1.4;">公司內部的 <span style="background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">i.agent</span> 算不算 AI Agent？</p>
+                <div style="display:flex;gap:12px;justify-content:center;">
+                    <div style="background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.15);border-radius:12px;padding:11px 28px;font-size:1rem;font-weight:700;">✅ 算</div>
+                    <div style="background:rgba(255,77,0,0.1);border:2px solid rgba(255,77,0,0.4);border-radius:12px;padding:11px 28px;font-size:1rem;font-weight:700;">❌ 不算</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: EVOLUTION -->
+    <div class="slide slide-4" data-slide="4">
+        <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.09;"></div><div class="blob" style="width:250px;height:250px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.07;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">PART 1 — EVOLUTION</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.6rem,3vw,2.5rem);margin-bottom:40px;" class="reveal">自動化演進：三個世代</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;" class="reveal">
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;position:relative;overflow:hidden;"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:#444;"></div><div style="font-size:2.2rem;margin-bottom:12px;">🤖</div><div style="font-weight:800;font-size:1.3rem;margin-bottom:4px;font-family:'Archivo Black',sans-serif;">RPA</div><div style="color:var(--color-text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:3px;margin-bottom:16px;">~2000s → 2020</div><div style="font-size:0.9rem;color:var(--color-text-secondary);line-height:1.6;">按規則執行固定流程<br>Script runner</div></div>
+                <div style="background:rgba(255,154,60,0.06);border:1px solid rgba(255,154,60,0.2);border-radius:16px;padding:24px;position:relative;overflow:hidden;"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff4d00,#ff9a3c);"></div><div style="font-size:2.2rem;margin-bottom:12px;">💬</div><div style="font-weight:800;font-size:1.3rem;margin-bottom:4px;font-family:'Archivo Black',sans-serif;">Chatbot / LLM</div><div style="color:var(--color-text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:3px;margin-bottom:16px;">2022 → 2023</div><div style="font-size:0.9rem;color:var(--color-text-secondary);line-height:1.6;">理解語言、回答問題<br>Interactive assistant</div></div>
+                <div style="background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.35);border-radius:16px;padding:24px;position:relative;overflow:hidden;"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff4d00,#ffe08a);"></div><div style="font-size:2.2rem;margin-bottom:12px;">🧠</div><div style="font-weight:800;font-size:1.3rem;margin-bottom:4px;font-family:'Archivo Black',sans-serif;background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">AI Agent</div><div style="color:var(--color-text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:3px;margin-bottom:16px;">2024 → 現在</div><div style="font-size:0.9rem;color:var(--color-text-secondary);line-height:1.6;">理解目標、自己拆步驟<br>Goal-driven orchestrator</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: WHAT IS AI AGENT -->
+    <div class="slide slide-5" data-slide="5">
+        <div class="gradient-mesh"><div class="blob" style="width:420px;height:420px;top:-80px;right:-80px;background:var(--color-accent-1);opacity:0.11;"></div><div class="blob" style="width:280px;height:280px;bottom:-60px;left:-50px;background:var(--color-accent-2);opacity:0.08;"></div><div class="blob" style="width:180px;height:180px;top:30%;left:10%;background:var(--color-accent-3);opacity:0.06;"></div></div>
+        <canvas class="particle-canvas-ambient" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">PART 2</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.8rem,3.5vw,2.8rem);margin-bottom:8px;" class="reveal">什麼是 AI Agent？</h2>
+            <p style="color:var(--color-text-muted);font-size:1rem;margin-bottom:32px;" class="reveal">三個關鍵詞定義一切</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:28px;text-align:center;" class="reveal"><div style="font-size:2.5rem;margin-bottom:12px;">🎯</div><div style="font-family:'Archivo Black',sans-serif;font-size:1.3rem;background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;">自主性</div><div style="font-size:0.85rem;color:var(--color-text-muted);line-height:1.6;">接到目標後，不需要人一步一步指示，自己決定做什麼</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:28px;text-align:center;" class="reveal"><div style="font-size:2.5rem;margin-bottom:12px;">🗺️</div><div style="font-family:'Archivo Black',sans-serif;font-size:1.3rem;background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;">推理/規劃</div><div style="font-size:0.85rem;color:var(--color-text-muted);line-height:1.6;">把複雜任務拆成步驟，判斷先做什麼、如果失敗怎麼調整</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:28px;text-align:center;" class="reveal"><div style="font-size:2.5rem;margin-bottom:12px;">🔧</div><div style="font-family:'Archivo Black',sans-serif;font-size:1.3rem;background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;">工具使用</div><div style="font-size:0.85rem;color:var(--color-text-muted);line-height:1.6;">能呼叫 API、搜尋資料、讀寫檔案、操作系統完成任務</div></div>
+            </div>
+            <div style="margin-top:24px;text-align:center;" class="reveal"><span style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.25);border-radius:30px;padding:10px 24px;font-size:0.9rem;color:var(--color-accent-2);">= LLM 為核心大腦 + 記憶 + 規劃 + 工具調用</span></div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: AGENT LOOP -->
+    <div class="slide slide-6" data-slide="6">
+        <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.09;"></div><div class="blob" style="width:240px;height:240px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.07;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">AGENT LOOP</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);margin-bottom:32px;" class="reveal">AI Agent 怎麼運作</h2>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;" class="reveal">
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:14px 18px;text-align:center;flex:1;min-width:100px;"><div style="font-size:1.5rem;margin-bottom:4px;">👁️</div><div style="font-size:0.8rem;font-weight:700;color:var(--color-accent-2);">感知</div><div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">接收任務與環境資訊</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.4rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:14px 18px;text-align:center;flex:1;min-width:100px;"><div style="font-size:1.5rem;margin-bottom:4px;">🧠</div><div style="font-size:0.8rem;font-weight:700;color:var(--color-accent-2);">推理/規劃</div><div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">LLM 決定下一步</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.4rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:14px 18px;text-align:center;flex:1;min-width:100px;"><div style="font-size:1.5rem;margin-bottom:4px;">🔧</div><div style="font-size:0.8rem;font-weight:700;color:var(--color-accent-2);">工具調用</div><div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">呼叫 API/執行指令</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.4rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:14px 18px;text-align:center;flex:1;min-width:100px;"><div style="font-size:1.5rem;margin-bottom:4px;">📊</div><div style="font-size:0.8rem;font-weight:700;color:var(--color-accent-2);">觀察結果</div><div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">讀取執行回饋</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.4rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,154,60,0.15);border:2px solid rgba(255,154,60,0.5);border-radius:12px;padding:14px 18px;text-align:center;flex:1;min-width:100px;"><div style="font-size:1.5rem;margin-bottom:4px;">🔄</div><div style="font-size:0.8rem;font-weight:700;color:var(--color-accent-2);">修正策略</div><div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">再次規劃直到完成</div></div>
+            </div>
+            <div style="margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="reveal">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:16px 20px;"><div style="font-weight:700;color:var(--color-text-muted);font-size:0.8rem;margin-bottom:8px;">💬 Chatbot（問答型）</div><div style="font-size:0.9rem;color:var(--color-text-secondary);">你問 → 它答 → 結束。單輪，不會主動採取行動。</div></div>
+                <div style="background:rgba(255,77,0,0.07);border:1px solid rgba(255,77,0,0.25);border-radius:12px;padding:16px 20px;"><div style="font-weight:700;color:var(--color-accent-2);font-size:0.8rem;margin-bottom:8px;">🤖 AI Agent（執行型）</div><div style="font-size:0.9rem;color:var(--color-text-secondary);">你給目標 → 它持續推理、調用工具、自我修正直到完成。</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: CODING AGENT -->
+    <div class="slide slide-7" data-slide="7">
+        <div class="gradient-mesh"><div class="blob" style="width:400px;height:400px;top:-80px;right:-70px;background:var(--color-accent-1);opacity:0.12;"></div><div class="blob" style="width:260px;height:260px;bottom:-60px;left:-50px;background:var(--color-accent-2);opacity:0.08;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">PART 3</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);margin-bottom:8px;" class="reveal">什麼是 AI Coding Agent？</h2>
+            <p style="color:var(--color-text-muted);font-size:0.9rem;margin-bottom:28px;" class="reveal">AI Agent 的子類型，專門針對軟體開發流程設計</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:24px;" class="reveal"><div style="font-weight:700;margin-bottom:16px;color:var(--color-accent-2);">💡 它能做什麼</div><ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;"><li style="display:flex;gap:10px;font-size:0.88rem;color:var(--color-text-secondary);"><span>📁</span>讀寫整個 repo 的檔案</li><li style="display:flex;gap:10px;font-size:0.88rem;color:var(--color-text-secondary);"><span>⚙️</span>在終端機執行指令與測試</li><li style="display:flex;gap:10px;font-size:0.88rem;color:var(--color-text-secondary);"><span>🔍</span>搜尋文件、API、錯誤訊息</li><li style="display:flex;gap:10px;font-size:0.88rem;color:var(--color-text-secondary);"><span>🔀</span>操作 Git diff、PR、commit</li><li style="display:flex;gap:10px;font-size:0.88rem;color:var(--color-text-secondary);"><span>🔄</span>失敗後自動修正再試</li></ul></div>
+                <div style="display:flex;flex-direction:column;gap:14px;" class="reveal">
+                    <div style="background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.25);border-radius:12px;padding:14px 18px;"><div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;">Claude Code</div><div style="font-size:0.8rem;color:var(--color-text-muted);">Anthropic 出品，終端機 CLI，擅長讀懂複雜 codebase、跨檔案理解</div></div>
+                    <div style="background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.25);border-radius:12px;padding:14px 18px;"><div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;">Codex (OpenAI)</div><div style="font-size:0.8rem;color:var(--color-text-muted);">OpenAI 出品，CLI + 桌面版，GPT 模型，與 VS Code/GitHub 整合深</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: COPILOT vs AGENT -->
+    <div class="slide slide-8" data-slide="8">
+        <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.09;"></div><div class="blob" style="width:240px;height:240px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.07;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">回答開場問題</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.4rem,2.8vw,2.1rem);margin-bottom:28px;" class="reveal">Copilot 不算、i.agent 也不算 —— <span style="background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">差在哪裡？</span></h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;" class="reveal">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:20px;">
+                    <div style="text-align:center;margin-bottom:12px;font-size:1.4rem;">💬</div>
+                    <div style="font-weight:700;text-align:center;margin-bottom:12px;font-size:0.95rem;">GitHub Copilot</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;font-size:0.82rem;color:var(--color-text-secondary);">
+                        <li>✦ 補齊程式碼，單次回應</li>
+                        <li>✦ 不會主動跑測試</li>
+                        <li>✦ 不讀其他檔案</li>
+                        <li style="color:var(--color-text-muted);padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">→ 智慧補全工具</li>
+                    </ul>
+                </div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:20px;">
+                    <div style="text-align:center;margin-bottom:12px;font-size:1.4rem;">🏢</div>
+                    <div style="font-weight:700;text-align:center;margin-bottom:12px;font-size:0.95rem;">i.agent（內部）</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;font-size:0.82rem;color:var(--color-text-secondary);">
+                        <li>✦ 問答介面，一問一答</li>
+                        <li>✦ 不會主動執行任務</li>
+                        <li>✦ 沒有工具調用能力</li>
+                        <li style="color:var(--color-text-muted);padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">→ 聊天助理，非 Agent</li>
+                    </ul>
+                </div>
+                <div style="background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.3);border-radius:16px;padding:20px;">
+                    <div style="text-align:center;margin-bottom:12px;font-size:1.4rem;">🤖</div>
+                    <div style="font-weight:700;text-align:center;margin-bottom:12px;font-size:0.95rem;background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">AI Coding Agent</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;font-size:0.82rem;color:var(--color-text-secondary);">
+                        <li>✦ 你給目標，它自己規劃</li>
+                        <li>✦ 跑測試、看結果、修正</li>
+                        <li>✦ 讀整個 repo 並執行</li>
+                        <li style="color:var(--color-accent-2);padding-top:8px;border-top:1px solid rgba(255,77,0,0.2);">→ 真正的執行代理</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: CLAUDE CODE CONFIG HIERARCHY -->
+    <div class="slide slide-9" data-slide="9">
+        <div class="gradient-mesh"><div class="blob" style="width:380px;height:380px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.1;"></div><div class="blob" style="width:250px;height:250px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.07;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">PART 4 — CLAUDE CODE 深入認識</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);margin-bottom:8px;" class="reveal">Claude Code 怎麼讀懂你的專案？</h2>
+            <p style="color:var(--color-text-muted);font-size:0.9rem;margin-bottom:24px;" class="reveal">四層設定，優先權由上到下遞減，上層蓋不掉、下層蓋得掉</p>
+            <div style="display:flex;flex-direction:column;gap:10px;" class="reveal">
+                <div style="display:flex;align-items:center;gap:14px;background:rgba(255,77,0,0.1);border:1px solid rgba(255,77,0,0.35);border-radius:12px;padding:12px 18px;"><div style="font-size:1.3rem;">🏢</div><div style="flex:1;"><div style="font-weight:700;font-size:0.9rem;">企業管理設定 Managed</div><div style="color:var(--color-text-muted);font-size:0.78rem;">IT 用 MDM/後台部署，個人與專案設定都蓋不過</div></div></div>
+                <div style="display:flex;align-items:center;gap:14px;background:rgba(255,154,60,0.08);border:1px solid rgba(255,154,60,0.25);border-radius:12px;padding:12px 18px;"><div style="font-size:1.3rem;">🟡</div><div style="flex:1;"><div style="font-weight:700;font-size:0.9rem;">個人專案設定 Local</div><div style="color:var(--color-text-muted);font-size:0.78rem;">settings.local.json、CLAUDE.local.md — 自動 gitignore，只在自己機器生效</div></div></div>
+                <div style="display:flex;align-items:center;gap:14px;background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:12px 18px;"><div style="font-size:1.3rem;">🟢</div><div style="flex:1;"><div style="font-weight:700;font-size:0.9rem;">專案團隊設定 Project</div><div style="color:var(--color-text-muted);font-size:0.78rem;">CLAUDE.md、.claude/settings.json — 進版控，全隊共用</div></div></div>
+                <div style="display:flex;align-items:center;gap:14px;background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:12px 18px;opacity:0.85;"><div style="font-size:1.3rem;">🔵</div><div style="flex:1;"><div style="font-weight:700;font-size:0.9rem;">個人全域設定 User</div><div style="color:var(--color-text-muted);font-size:0.78rem;">~/.claude/settings.json、~/.claude/CLAUDE.md — 這台機器上所有專案都套用</div></div></div>
+            </div>
+            <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;" class="reveal">
+                <span style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.25);border-radius:30px;padding:8px 16px;font-size:0.78rem;color:var(--color-accent-2);">📁 CLAUDE.md 支援 monorepo 巢狀載入 + @path 引用其他文件</span>
+                <span style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.25);border-radius:30px;padding:8px 16px;font-size:0.78rem;color:var(--color-accent-2);">🧠 Auto Memory 是 Claude 自己寫的筆記，per-project，跟 CLAUDE.md 不同</span>
+                <span style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.25);border-radius:30px;padding:8px 16px;font-size:0.78rem;color:var(--color-accent-2);">🔗 業界 AGENTS.md 慣例可用 @AGENTS.md 或 symlink 銜接</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: MULTI-DEV COLLABORATION -->
+    <div class="slide slide-10" data-slide="10">
+        <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.09;"></div><div class="blob" style="width:240px;height:240px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.07;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">PART 4 續</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.5rem,3vw,2.3rem);margin-bottom:24px;line-height:1.3;" class="reveal">多人協作同一個專案，<span style="background:linear-gradient(135deg,#ff4d00,#ff9a3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">AI 會搞混嗎？</span></h2>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:16px 20px;margin-bottom:20px;" class="reveal"><span style="color:var(--color-accent-2);font-weight:700;">關鍵事實：</span><span style="color:var(--color-text-secondary);font-size:0.9rem;">Claude Code 本身沒有「使用者身分」的概念——不會因為換人操作就自動變行為，也不記得「這句話是誰說的」。</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div style="background:rgba(255,77,0,0.07);border:1px solid rgba(255,77,0,0.2);border-radius:16px;padding:20px;" class="reveal"><div style="color:var(--color-accent-2);font-weight:700;margin-bottom:14px;font-size:0.9rem;">✅ 規則放對地方</div><ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;"><li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>團隊規範寫進 CLAUDE.md（進版控），改規則要走 PR 審查，不是口頭跟 AI 講一句就算</li><li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>個人偏好放 settings.local.json／CLAUDE.local.md（自動 gitignore），不會污染別人環境</li><li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>多人平行開發用 git worktree 隔離工作目錄，檔案互不干擾</li></ul></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:20px;" class="reveal"><div style="color:#f87171;font-weight:700;margin-bottom:14px;font-size:0.9rem;">⚠️ 要注意的地方</div><ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;"><li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#f87171;">▸</span>同一 repo 的所有 worktree 仍共用同一份 Auto Memory，記憶不是依人分開的</li><li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#f87171;">▸</span>企業如需強制規範，要靠 Managed 設定，不能只指望大家自律</li></ul></div>
+            </div>
+            <div style="margin-top:20px;background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.2);border-radius:12px;padding:14px 20px;" class="reveal"><span style="color:var(--color-accent-2);font-weight:600;">一句話心法：</span><span style="color:var(--color-text-secondary);font-size:0.9rem;">讓「文件」而不是「誰在講話」決定 AI 的行為。</span></div>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: WHERE TO USE -->
+    <div class="slide slide-11" data-slide="11">
+        <div class="gradient-mesh"><div class="blob" style="width:380px;height:380px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.1;"></div><div class="blob" style="width:260px;height:260px;bottom:-60px;left:-50px;background:var(--color-accent-2);opacity:0.08;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">PRACTICAL GUIDE</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);margin-bottom:28px;" class="reveal">開發者現在能用在哪</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px;" class="reveal"><div style="font-size:1.8rem;margin-bottom:10px;">🔨</div><div style="font-weight:700;margin-bottom:8px;font-size:0.95rem;">程式碼重構</div><div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.6;">給 agent 一個 repo，說「重構這個模組、補齊 test coverage」，讓它跑</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px;" class="reveal"><div style="font-size:1.8rem;margin-bottom:10px;">🐛</div><div style="font-weight:700;margin-bottom:8px;font-size:0.95rem;">Debug 協助</div><div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.6;">把 error log 和 repo 丟給它，讓它自己找問題、提 patch</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px;" class="reveal"><div style="font-size:1.8rem;margin-bottom:10px;">📝</div><div style="font-weight:700;margin-bottom:8px;font-size:0.95rem;">文件生成</div><div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.6;">讀懂整個 codebase，自動產出 API 文件、README、規格說明</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px;" class="reveal"><div style="font-size:1.8rem;margin-bottom:10px;">🧪</div><div style="font-weight:700;margin-bottom:8px;font-size:0.95rem;">自動化測試</div><div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.6;">根據程式碼自動產生 unit test，跑測試並修正失敗的 case</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px;" class="reveal"><div style="font-size:1.8rem;margin-bottom:10px;">🔄</div><div style="font-weight:700;margin-bottom:8px;font-size:0.95rem;">CI/CD 整合</div><div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.6;">把 agent 接進 GitHub Actions，PR 自動 review 或修正小問題</div></div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px;" class="reveal"><div style="font-size:1.8rem;margin-bottom:10px;">🏗️</div><div style="font-weight:700;margin-bottom:8px;font-size:0.95rem;">快速做 Demo</div><div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.6;">快速把需求做成可跑的小雛型，用來驗證方向</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: RISKS -->
+    <div class="slide slide-12" data-slide="12">
+        <div class="gradient-mesh"><div class="blob" style="width:350px;height:350px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.09;"></div><div class="blob" style="width:240px;height:240px;bottom:-50px;left:-40px;background:#f87171;opacity:0.07;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">PART 5 — RISK & PRINCIPLES</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);margin-bottom:28px;" class="reveal">導入前要知道的事</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:16px;padding:24px;" class="reveal"><div style="color:#f87171;font-weight:700;margin-bottom:16px;font-size:0.95rem;">⚠️ 常見風險</div><ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;"><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#f87171;">▸</span>權限過大：agent 可能修改不該改的檔案</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#f87171;">▸</span>上下文過長：token 爆炸，成本失控</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#f87171;">▸</span>資料外洩：程式碼或敏感資訊上雲</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#f87171;">▸</span>Prompt injection：惡意輸入操控 agent</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#f87171;">▸</span>過度信任輸出：沒看懂就直接合進去</li></ul></div>
+                <div style="background:rgba(255,77,0,0.07);border:1px solid rgba(255,77,0,0.2);border-radius:16px;padding:24px;" class="reveal"><div style="color:var(--color-accent-2);font-weight:700;margin-bottom:16px;font-size:0.95rem;">✅ 導入原則</div><ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;"><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>最小權限原則：只給它需要的工具與目錄</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>保留 human-in-the-loop 的覆核點</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>先 PoC → Pilot → Production，逐步擴大</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>設定 token 預算上限與告警機制</li><li style="font-size:0.88rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#4ade80;">▸</span>看懂 agent 的 diff 再 merge，不要盲目接受</li></ul></div>
+            </div>
+            <div style="margin-top:20px;background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.2);border-radius:12px;padding:14px 20px;" class="reveal"><span style="color:var(--color-accent-2);font-weight:600;">核心心態：</span><span style="color:var(--color-text-secondary);font-size:0.9rem;">AI 是加速器，不是替代者。你看不懂的輸出，就是風險所在。</span></div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: DEMO PREP CASE STUDY -->
+    <div class="slide slide-13" data-slide="13">
+        <div class="gradient-mesh"><div class="blob" style="width:380px;height:380px;top:-70px;right:-70px;background:var(--color-accent-1);opacity:0.1;"></div><div class="blob" style="width:250px;height:250px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.07;"></div></div>
+        <div class="content">
+            <p style="color:var(--color-accent-1);text-transform:uppercase;letter-spacing:4px;font-size:0.8rem;margin-bottom:12px;" class="reveal">案例分享</p>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);margin-bottom:24px;" class="reveal">這場 Demo 是怎麼準備出來的</h2>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:28px;" class="reveal">
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:12px 14px;text-align:center;flex:1;min-width:110px;"><div style="font-size:1.3rem;margin-bottom:4px;">💡</div><div style="font-size:0.78rem;font-weight:700;color:var(--color-accent-2);">提出想法</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.3rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:12px 14px;text-align:center;flex:1;min-width:110px;"><div style="font-size:1.3rem;margin-bottom:4px;">❓</div><div style="font-size:0.78rem;font-weight:700;color:var(--color-accent-2);">AI反問澄清</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.3rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:12px 14px;text-align:center;flex:1;min-width:110px;"><div style="font-size:1.3rem;margin-bottom:4px;">✅</div><div style="font-size:0.78rem;font-weight:700;color:var(--color-accent-2);">逐項確認決策</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.3rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.3);border-radius:12px;padding:12px 14px;text-align:center;flex:1;min-width:110px;"><div style="font-size:1.3rem;margin-bottom:4px;">📋</div><div style="font-size:0.78rem;font-weight:700;color:var(--color-accent-2);">產出對齊計畫</div></div>
+                <div style="color:var(--color-accent-1);font-size:1.3rem;font-weight:900;">→</div>
+                <div style="background:rgba(255,154,60,0.15);border:2px solid rgba(255,154,60,0.5);border-radius:12px;padding:12px 14px;text-align:center;flex:1;min-width:110px;"><div style="font-size:1.3rem;margin-bottom:4px;">🚀</div><div style="font-size:0.78rem;font-weight:700;color:var(--color-accent-2);">核准才動手</div></div>
+            </div>
+            <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:14px;" class="reveal">今天現場 demo 的「台股下單系統」，就是照這份確認清單來的：</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="reveal">
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:10px;padding:12px 16px;font-size:0.82rem;color:var(--color-text-secondary);"><span style="color:var(--color-accent-2);font-weight:600;">呈現方式：</span>先備文件與架構鷹架，程式碼現場從零生成</div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:10px;padding:12px 16px;font-size:0.82rem;color:var(--color-text-secondary);"><span style="color:var(--color-accent-2);font-weight:600;">技術棧：</span>C# .NET 8 + SQLite（對應公司內部 .NET + SQL Server）</div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:10px;padding:12px 16px;font-size:0.82rem;color:var(--color-text-secondary);"><span style="color:var(--color-accent-2);font-weight:600;">UI 形式：</span>ASP.NET Core Web API + 簡單網頁前端</div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:10px;padding:12px 16px;font-size:0.82rem;color:var(--color-text-secondary);"><span style="color:var(--color-accent-2);font-weight:600;">資料來源：</span>串接台灣證交所公開資料（真實股價）</div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:10px;padding:12px 16px;font-size:0.82rem;color:var(--color-text-secondary);"><span style="color:var(--color-accent-2);font-weight:600;">功能範圍：</span>查價／下單／委託查詢／取消委託</div>
+                <div style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:10px;padding:12px 16px;font-size:0.82rem;color:var(--color-text-secondary);"><span style="color:var(--color-accent-2);font-weight:600;">Demo 時長：</span>30 分鐘以上完整版</div>
+            </div>
+            <div style="margin-top:18px;background:rgba(255,77,0,0.08);border:1px solid rgba(255,77,0,0.2);border-radius:12px;padding:14px 20px;" class="reveal"><span style="color:var(--color-text-secondary);font-size:0.88rem;">這幾個決定，都是動手寫程式<b style="color:var(--color-accent-2);">之前</b>跟 AI 一來一回討論出來的——這就是 Vibe Coding：人負責定義範圍與取捨，AI 負責提案與執行。</span></div>
+        </div>
+    </div>
+
+    <!-- SLIDE 14: CLOSING -->
+    <div class="slide slide-14" data-slide="14">
+        <div class="gradient-mesh"><div class="blob" style="width:520px;height:520px;top:-120px;right:-100px;background:var(--color-accent-1);opacity:0.14;"></div><div class="blob" style="width:320px;height:320px;bottom:-100px;left:-60px;background:var(--color-accent-2);opacity:0.1;"></div><div class="blob" style="width:200px;height:200px;top:35%;left:15%;background:var(--color-accent-3);opacity:0.08;"></div></div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content text-center">
+            <div style="font-size:80px;margin-bottom:16px;animation:float 3s ease-in-out infinite;" class="reveal">🚀</div>
+            <h2 style="font-family:'Archivo Black',sans-serif;font-size:clamp(1.8rem,4vw,3rem);background:linear-gradient(135deg,#ff4d00,#ff9a3c,#ffe08a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px;line-height:1.2;" class="reveal">AI Agent 不是黑魔法<br>是工程師的新工具</h2>
+            <p style="color:var(--color-text-muted);font-size:1rem;margin-bottom:36px;max-width:600px;margin-left:auto;margin-right:auto;" class="reveal">把規劃、推理、工具調用交給代理；把判斷、審查、邊界設定留給工程師。</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:700px;margin:0 auto;" class="reveal">
+                <div style="background:rgba(255,77,0,0.1);border:1px solid rgba(255,77,0,0.25);border-radius:12px;padding:14px;text-align:center;"><div style="font-size:1.3rem;margin-bottom:6px;">🤖</div><div style="font-size:0.8rem;color:var(--color-accent-2);font-weight:600;">RPA</div><div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:4px;">規則固定 → 選 RPA</div></div>
+                <div style="background:rgba(255,77,0,0.1);border:1px solid rgba(255,77,0,0.25);border-radius:12px;padding:14px;text-align:center;"><div style="font-size:1.3rem;margin-bottom:6px;">🧠</div><div style="font-size:0.8rem;color:var(--color-accent-2);font-weight:600;">AI Agent</div><div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:4px;">需推理判斷 → 選 Agent</div></div>
+                <div style="background:rgba(255,77,0,0.1);border:1px solid rgba(255,77,0,0.25);border-radius:12px;padding:14px;text-align:center;"><div style="font-size:1.3rem;margin-bottom:6px;">💻</div><div style="font-size:0.8rem;color:var(--color-accent-2);font-weight:600;">Coding Agent</div><div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:4px;">開發任務 → 選 Claude/Codex</div></div>
+            </div>
+            <div style="margin-top:24px;text-align:center;" class="reveal"><span style="background:rgba(255,77,0,0.12);border:1px solid rgba(255,77,0,0.25);border-radius:30px;padding:10px 24px;font-size:0.85rem;color:var(--color-accent-2);">🎬 接下來：現場用 Claude Code 打造台股下單系統</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="nav-controls"><button class="nav-btn" onclick="changeSlide(-1)">&#8249;</button><div class="slide-dots" id="dots"></div><button class="nav-btn" onclick="changeSlide(1)">&#8250;</button><span class="slide-counter" id="counter">1 / 14</span></div>
+
+<script>
+let current=1;const total=document.querySelectorAll('.slide').length;const dotsContainer=document.getElementById('dots');const counter=document.getElementById('counter');for(let i=1;i<=total;i++){const dot=document.createElement('div');dot.className='dot'+(i===1?' active':'');dot.onclick=()=>goToSlide(i);dotsContainer.appendChild(dot);}function goToSlide(n){const prev=document.querySelector('.slide.active');const next=document.querySelector(`.slide[data-slide="${n}"]`);if(prev)prev.classList.remove('active');if(next){next.classList.add('active');animateSlide(next);}current=n;updateNav();}function changeSlide(dir){let next=current+dir;if(next<1)next=total;if(next>total)next=1;goToSlide(next);}function updateNav(){document.querySelectorAll('.dot').forEach((d,i)=>{d.classList.toggle('active',i+1===current);});counter.textContent=current+' / '+total;}document.addEventListener('keydown',(e)=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();changeSlide(1);}if(e.key==='ArrowLeft'){e.preventDefault();changeSlide(-1);}});let touchStartX=0;document.addEventListener('touchstart',(e)=>{touchStartX=e.touches[0].clientX;});document.addEventListener('touchend',(e)=>{const diff=touchStartX-e.changedTouches[0].clientX;if(Math.abs(diff)>50)changeSlide(diff>0?1:-1);});function animateSlide(slide){slide.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transition='none';el.style.opacity='0';el.style.transform='translateY(20px)';el.offsetHeight;const delay=i*0.08;el.style.transition=`opacity 0.35s ease ${delay}s, transform 0.35s ease ${delay}s`;el.style.opacity='1';el.style.transform='translateY(0px)';});}document.addEventListener('mousemove',(e)=>{const spotlight=document.querySelector('.mouse-spotlight');if(spotlight){spotlight.style.background=`radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(255,77,0,0.06), transparent 40%)`;}});window.initParticles=function(canvas,options){if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight;const interactive=options.interactive!==false;const count=options.count||(interactive?55:18);let mx=-1000,my=-1000;const particles=Array.from({length:count},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3,size:Math.random()*2.5+0.8,alpha:Math.random()*0.35+0.1}));if(interactive){canvas.addEventListener('mousemove',(e)=>{const rect=canvas.getBoundingClientRect();mx=e.clientX-rect.left;my=e.clientY-rect.top;});canvas.addEventListener('mouseleave',()=>{mx=-1000;my=-1000;});}(function animate(){ctx.clearRect(0,0,canvas.width,canvas.height);particles.forEach(p=>{if(interactive){const dx=p.x-mx,dy=p.y-my,dist=Math.sqrt(dx*dx+dy*dy);if(dist<120){const force=(120-dist)/120*2;p.vx+=(dx/dist)*force*0.1;p.vy+=(dy/dist)*force*0.1;}}p.vx*=0.98;p.vy*=0.98;p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=canvas.width;if(p.x>canvas.width)p.x=0;if(p.y<0)p.y=canvas.height;if(p.y>canvas.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fillStyle=`rgba(255,77,0,${p.alpha})`;ctx.fill();});requestAnimationFrame(animate);})();};document.querySelectorAll('.particle-canvas').forEach(c=>window.initParticles(c,{interactive:true,count:55}));document.querySelectorAll('.particle-canvas-ambient').forEach(c=>window.initParticles(c,{interactive:false,count:18}));try{animateSlide(document.querySelector('.slide.active'));}catch(e){}
+</script>
+</body>
+</html>
